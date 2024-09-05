@@ -1,3 +1,25 @@
+# -----------------------------------------------------------------------------
+# Copyright 2024 Lucas Fernandes
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the “Software”), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+# -----------------------------------------------------------------------------
+
 import tkinter as tk
 from tkinter import simpledialog
 import socket
@@ -6,16 +28,22 @@ import pickle
 
 class ChatClient(tk.Tk):
     def __init__(self):
+        """
+        Inicializa o cliente com interface gráfica.
+        """
         super().__init__()
         self.username = None
         self.client_socket = None
         self.connected = False
-        self.current_chat_user = None  # Armazena o usuário com quem o cliente está conversando
-        self.is_online = True  # Atributo para armazenar o estado online/offline
-        self.contacts = []  # Lista de contatos
+        self.current_chat_user = None  # Usuário com quem o cliente está conversando, para saber qual conversa está ativa
+        self.is_online = True  # Status online/offline do cliente, inicia online
+        self.contacts = []  # Lista de contatos do cliente
         self.setup_chat_interface()
 
     def setup_chat_interface(self):
+        """
+        Configuração dos elementos da interface gráfica.
+        """
         self.chat_log = tk.Text(self, state='disabled', width=50, height=15)
         self.chat_log.grid(row=0, column=0, columnspan=2, sticky="nsew")
 
@@ -29,11 +57,9 @@ class ChatClient(tk.Tk):
         self.user_list.grid(row=0, column=2, rowspan=3, sticky="nsw")
         self.user_list.bind('<<ListboxSelect>>', self.on_user_select)
 
-        # Botão para adicionar contato
         add_contact_button = tk.Button(self, text="Adicionar Contato", command=self.add_contact)
         add_contact_button.grid(row=3, column=0, sticky="ew")
 
-        # Botão para remover contato
         remove_contact_button = tk.Button(self, text="Remover Contato", command=self.remove_contact)
         remove_contact_button.grid(row=3, column=1, sticky="ew")
 
@@ -45,18 +71,27 @@ class ChatClient(tk.Tk):
         self.grid_rowconfigure(0, weight=1)
 
     def add_contact(self):
+        """
+        Solicita ao usuário um nome de contato para adicionar e envia a solicitação ao servidor.
+        """
         new_contact = simpledialog.askstring("Adicionar Contato", "Digite o nome do contato:")
         if new_contact:
             message = {'action': 'add_contact', 'contact': new_contact}
             self.send_data_to_server(message)
 
     def remove_contact(self):
+        """
+        Solicita ao usuário um nome de contato para remover e envia a solicitação ao servidor.
+        """
         selected_contact = simpledialog.askstring("Remover Contato", "Digite o nome do contato:")
         if selected_contact:
             message = {'action': 'remove_contact', 'contact': selected_contact}
             self.send_data_to_server(message)
 
     def toggle_online_status(self):
+        """
+        Alterna o status entre online e offline.
+        """
         self.is_online = not self.is_online
         if self.is_online:
             self.toggle_button.config(text="Ficar Offline")
@@ -68,6 +103,7 @@ class ChatClient(tk.Tk):
             self.update_server_online_status(False)
 
     def update_server_online_status(self, status):
+        """Atualiza o status online/offline no servidor."""
         if self.connected:
             try:
                 message = {"action": "status_update", "status": status}
@@ -76,6 +112,7 @@ class ChatClient(tk.Tk):
                 print(f"Erro ao atualizar status: {e}")
 
     def connect_to_server(self, host='192.168.0.11', port=22226):
+        """Conecta ao servidor de chat."""
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
             self.client_socket.connect((host, port))
@@ -86,12 +123,16 @@ class ChatClient(tk.Tk):
             print(f"Erro ao conectar ao servidor: {e}")
 
     def request_username(self):
+        """
+        Solicita um nome de usuário ao cliente e o envia ao servidor.
+        """
         self.username = simpledialog.askstring("Nome de Usuário", "Digite seu nome de usuário:")
         if self.username:
-            self.title(f"Perfil do {self.username}")  # Define o título da janela com o nome do cliente
+            self.title(f"Perfil do {self.username}")
             self.client_socket.send(pickle.dumps(self.username))
 
     def check_for_incoming_data(self):
+        """Verifica continuamente se há dados recebidos do servidor."""
         if self.connected:
             try:
                 self.client_socket.settimeout(0.1)
@@ -118,12 +159,14 @@ class ChatClient(tk.Tk):
             self.after(100, self.check_for_incoming_data)
 
     def update_chat_log(self, message):
+        """Atualiza o log de mensagens exibido na interface."""
         self.chat_log.config(state='normal')
         self.chat_log.insert(tk.END, message + '\n')
         self.chat_log.config(state='disabled')
         self.chat_log.see(tk.END)
 
     def update_user_list(self, user_list):
+        """Atualiza a lista de contatos exibida na interface."""
         self.contacts = user_list
         self.user_list.delete(0, tk.END)
         for user in user_list:
@@ -131,18 +174,25 @@ class ChatClient(tk.Tk):
                 self.user_list.insert(tk.END, user)
 
     def on_user_select(self, event):
+        """Lida com a seleção de um usuário na lista de contatos."""
         selected_user = self.user_list.get(self.user_list.curselection())
         if selected_user and selected_user != self.current_chat_user:
             self.current_chat_user = selected_user
             self.start_private_chat(selected_user)
 
     def start_private_chat(self, target_user):
+        """
+        Inicia um chat privado com o usuário selecionado.
+        """
         if target_user:
             start_chat_message = {'action': 'start_private_chat', 'target_user': target_user}
             self.send_data_to_server(start_chat_message)
             self.update_chat_log(f"Iniciado chat privado com {target_user}")
 
     def send_chat_message(self):
+        """
+        Envia a mensagem escrita no campo de entrada para o servidor.
+        """
         if not self.is_online:
             self.update_chat_log("Você está offline. Não é possível enviar mensagens.")
             return
@@ -154,12 +204,14 @@ class ChatClient(tk.Tk):
             self.chat_message.delete(0, tk.END)
 
     def send_data_to_server(self, data):
+        """Envia dados para o servidor."""
         try:
             self.client_socket.send(pickle.dumps(data))
         except Exception as e:
             print(f"Erro ao enviar dados: {e}")
 
     def run(self):
+        """Executa a interface gráfica."""
         self.mainloop()
 
 
