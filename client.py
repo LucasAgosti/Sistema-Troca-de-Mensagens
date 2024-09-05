@@ -25,24 +25,29 @@ from tkinter import simpledialog
 import socket
 import threading
 import pickle
+import argparse
 
 class ChatClient(tk.Tk):
-    def __init__(self):
+    def __init__(self, host, port):
         """
         Inicializa o cliente com interface gráfica.
+        - host: IP do servidor ao qual o cliente vai se conectar.
+        - port: Porta do servidor ao qual o cliente vai se conectar.
         """
         super().__init__()
+        self.host = host
+        self.port = port
         self.username = None
         self.client_socket = None
         self.connected = False
-        self.current_chat_user = None  # Usuário com quem o cliente está conversando, para saber qual conversa está ativa
-        self.is_online = True  # Status online/offline do cliente, inicia online
+        self.current_chat_user = None  # Usuário com quem o cliente está conversando
+        self.is_online = True  # Status online/offline do cliente
         self.contacts = []  # Lista de contatos do cliente
         self.setup_chat_interface()
 
     def setup_chat_interface(self):
         """
-        Configuração dos elementos da interface gráfica.
+        Configura os elementos da interface gráfica.
         """
         self.chat_log = tk.Text(self, state='disabled', width=50, height=15)
         self.chat_log.grid(row=0, column=0, columnspan=2, sticky="nsew")
@@ -111,11 +116,11 @@ class ChatClient(tk.Tk):
             except Exception as e:
                 print(f"Erro ao atualizar status: {e}")
 
-    def connect_to_server(self, host='192.168.0.11', port=22226):
+    def connect_to_server(self):
         """Conecta ao servidor de chat."""
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
-            self.client_socket.connect((host, port))
+            self.client_socket.connect((self.host, self.port))
             self.connected = True
             self.request_username()
             self.check_for_incoming_data()
@@ -128,7 +133,7 @@ class ChatClient(tk.Tk):
         """
         self.username = simpledialog.askstring("Nome de Usuário", "Digite seu nome de usuário:")
         if self.username:
-            self.title(f"Perfil do {self.username}")
+            self.title(f"Perfil do {self.username}")  # Define o título da janela com o nome do cliente
             self.client_socket.send(pickle.dumps(self.username))
 
     def check_for_incoming_data(self):
@@ -216,6 +221,12 @@ class ChatClient(tk.Tk):
 
 
 if __name__ == "__main__":
-    client = ChatClient()
+    # Definição dos argumentos de linha de comando para IP e Porta do servidor
+    parser = argparse.ArgumentParser(description="Cliente de Chat")
+    parser.add_argument('--host', type=str, required=True, help='IP do servidor de chat')
+    parser.add_argument('--port', type=int, required=True, help='Porta do servidor de chat')
+    args = parser.parse_args()
+
+    client = ChatClient(host=args.host, port=args.port)
     client.connect_to_server()
     client.run()

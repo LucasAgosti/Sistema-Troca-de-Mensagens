@@ -25,10 +25,10 @@ import threading
 import pickle
 import pika
 import time
-
+import argparse
 
 class ChatServer:
-    def __init__(self, host='192.168.0.11', port=22226, max_clients=10):
+    def __init__(self, host, port, max_clients=10):
         """
         Inicializa o servidor de chat.
         - host: IP onde o servidor vai rodar.
@@ -95,8 +95,8 @@ class ChatServer:
                     client.close()
                     return
                 self.clients[client] = username
-                self.client_status[username] = True  # O cliente já inicia online
-                self.contacts[username] = []  # Seta uma lista de contatos do cliente (vazia no começo)
+                self.client_status[username] = True  # O cliente começa online
+                self.contacts[username] = []  # Inicializa lista de contatos do cliente
 
                 # Criação de uma fila no RabbitMQ para o cliente
                 self.rabbitmq_channel.queue_declare(queue=username, durable=True)
@@ -247,7 +247,7 @@ class ChatServer:
 
     def send_private_message(self, client, message, target_user):
         """
-        Envia mensagem diretamente para um cliente, caso ele esteja online.
+        Envia mensagem diretamente para um cliente, caso esteja online.
         """
         username = self.clients[client]
 
@@ -306,5 +306,11 @@ class ChatServer:
 
 
 if __name__ == '__main__':
-    server = ChatServer()
+    # Definição dos argumentos de linha de comando para IP e Porta
+    parser = argparse.ArgumentParser(description="Servidor de Chat com RabbitMQ")
+    parser.add_argument('--host', type=str, default='0.0.0.0', help='IP para o servidor escutar (padrão: 0.0.0.0)')
+    parser.add_argument('--port', type=int, required=True, help='Porta para o servidor escutar')
+    args = parser.parse_args()
+
+    server = ChatServer(host=args.host, port=args.port)
     server.start()
